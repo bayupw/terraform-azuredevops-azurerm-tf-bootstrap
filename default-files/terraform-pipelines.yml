@@ -1,0 +1,80 @@
+trigger:
+- '*'
+
+variables:
+- group: shared
+
+pool:
+  vmImage: ubuntu-latest
+
+stages:
+- stage: validate
+  displayName: Validation
+  jobs:
+    - job:
+      displayName: Validate Terraform
+      pool:
+        vmImage: ubuntu-latest
+      steps:
+      # Terraform format check
+      - script: terraform fmt -check
+        displayName: Terraform Format Check
+        workingDirectory: '$(System.DefaultWorkingDirectory)'
+      # Terraform init with backend set to false
+      - script: terraform init -backend=false
+        displayName: Terraform Init
+        workingDirectory: '$(System.DefaultWorkingDirectory)'
+      - script: terraform validate
+        displayName: Terraform Validate
+        workingDirectory: '$(System.DefaultWorkingDirectory)'
+      # Install checkov
+      - script: pip install checkov
+        displayName: Install Checkov
+        workingDirectory: '$(System.DefaultWorkingDirectory)'
+      # Scan code with
+      - script: checkov -d $(System.DefaultWorkingDirectory) --download-external-modules true --skip-check CKV_TF_1
+        displayName: Terraform scan with Checkov
+        workingDirectory: '$(System.DefaultWorkingDirectory)'
+
+- stage: plan-deploy
+  displayName: Deploy with Terraform
+  dependsOn: validate
+  jobs:
+    - job: plan
+      displayName: Terraform Plan
+      pool:
+        vmImage: ubuntu-latest
+      steps:
+      # Terraform init with backend set to to use Azure Blob storage
+      - checkout: self
+        displayName: Checkout Terraform Module
+      - task: TerraformTaskV4@4
+        displayName: Terraform Init
+        inputs:
+          provider: 'azurerm'
+          command: 'init'
+          workingDirectory: '$(System.DefaultWorkingDirectory)'
+          backendServiceArm: '$(SERVICE_CONNECTION)'
+          backendAzureRmResourceGroupName: '$(BACKEND_RESOURCE_GROUP)'
+          backendAzureRmStorageAccountName: '$(BACKEND_STORAGE_ACCOUNT)'
+          backendAzureRmContainerName: '$(BACKEND_STORAGE_CONTAINER)'
+          backendAzureRmKey: '$(BACKEND_KEY)'
+
+      # Plan Terraform changes for non main branch
+      - task: TerraformTaskV4@4
+        displayName: Terraform Plan (Skip main branch)
+        condition: and(succeeded(), ne(variables['Build.SourceBranch'], 'refs/heads/main'))
+        inputs:
+          provider: 'azurerm'
+          command: 'plan'
+          environmentServiceNameAzureRM: '$(SERVICE_CONNECTION)'
+
+      # Apply Terraform changes only on the main branch
+      - task: TerraformTaskV4@4
+        displayName: Terraform Apply (Only for main branch)
+        condition: and(succeeded(), eq(variables['Build.SourceBranch'], 'refs/heads/main'))
+        inputs:
+          provider: 'azurerm'
+          command: 'apply'
+          commandOptions: '-auto-approve'
+          environmentServiceNameAzureRM: '$(SERVICE_CONNECTION)'
