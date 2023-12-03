@@ -40,8 +40,8 @@ stages:
   displayName: Deploy with Terraform
   dependsOn: validate
   jobs:
-    - job: plan
-      displayName: Terraform Plan
+    - job: plandeploy
+      displayName: Terraform Plan and Deploy
       pool:
         vmImage: ubuntu-latest
       steps:
