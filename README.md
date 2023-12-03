@@ -9,6 +9,7 @@ Before using this module, ensure you have the following:
 
 - [Azure DevOps account](https://azure.microsoft.com/services/devops/).
 - [Azure Devops personal access token](https://learn.microsoft.com/en-us/azure/devops/organizations/accounts/use-personal-access-tokens-to-authenticate?view=azure-devops&tabs=Windows).
+- [Microsoft DevLabs Terraform Task](https://marketplace.visualstudio.com/items?itemName=ms-devlabs.custom-terraform-tasks).
 - [Azure](https://portal.azure.com/) subscription with the necessary permissions and information (Subscription ID, Tenant ID).
 - [Azure CLI](https://learn.microsoft.com/en-us/cli/azure/install-azure-cli) installed locally.
 - [Terraform](https://www.terraform.io/downloads.html) installed locally.
@@ -16,10 +17,10 @@ Before using this module, ensure you have the following:
 ## Sample usage
 
 ```hcl
-module "ado-bootstrap" {
+module "azuredevops-bootstrap" {
   source  = "bayupw/azurerm-tf-bootstrap/azuredevops"
   version = "1.0.0"
-  
+
   azuredevops_organisation = "<your-org-name>"
   azuredevops_token        = "<ADO personal token>"
   project_name             = "<ADO project name>"
@@ -38,6 +39,7 @@ module "ado-bootstrap" {
   subscription_name       = "<My Azure Subscription Name>"
 
   create_storage         = true
+  append_random_string   = true
   storage_rg_name        = "rg-terraform-state-tf"
   storage_account_name   = "stterraformstate"
   storage_container_name = "tfstate"
@@ -60,4 +62,5 @@ Apache 2 Licensed. See [LICENSE](https://github.com/bayupw/terraform-azuredevops
 
 ## Reference and Useful Repos
 
-- https://github.com/Azure-Samples/azure-devops-terraform-oidc-ci-cd
+- https://learn.microsoft.com/en-us/samples/azure-samples/github-terraform-oidc-ci-cd/github-terraform-oidc-ci-cd/
+- https://github.com/microsoft/azure-pipelines-terraform/blob/main/Tasks/TerraformTask/TerraformTaskV4/README.md
