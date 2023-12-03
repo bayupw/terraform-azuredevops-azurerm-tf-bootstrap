@@ -36,7 +36,7 @@ stages:
         displayName: Terraform scan with Checkov
         workingDirectory: '$(System.DefaultWorkingDirectory)'
 
-- stage: plan-deploy
+- stage: plandeploy
   displayName: Deploy with Terraform
   dependsOn: validate
   jobs:
