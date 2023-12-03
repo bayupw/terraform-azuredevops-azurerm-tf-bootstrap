@@ -17,8 +17,9 @@ Before using this module, ensure you have the following:
 
 ```hcl
 module "ado-bootstrap" {
-  source = "../terraform-azuredevops-azurerm-tf-bootstrap"
-
+  source  = "bayupw/azurerm-tf-bootstrap/azuredevops"
+  version = "1.0.0"
+  
   azuredevops_organisation = "<your-org-name>"
   azuredevops_token        = "<ADO personal token>"
   project_name             = "<ADO project name>"
