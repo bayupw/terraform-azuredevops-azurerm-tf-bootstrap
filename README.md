@@ -1,7 +1,14 @@
 # Terraform Azure DevOps Bootstrap Module
 
 This Terraform module automates the process of setting up Azure DevOps for your Terraform Azure project. 
-It creates an Azure DevOps project, repositories, AzureRM Service Connection, Azure Blob storage for Terraform state, variable groups, and pipelines for managing Terraform infrastructure.
+The module creates:
+- Azure DevOps project
+- Azure repo with branch policies
+- AzureRM Service Connection
+- Azure Blob storage for Terraform state-
+- Variable groups
+- Azure DevOps pipelines
+- Publish JUnit test result XML to Azure DevOps pipelines
 
 ## Prerequisites
 
@@ -47,6 +54,7 @@ module "azuredevops-bootstrap" {
 
   create_variables_group = true
   create_pipeline        = true
+  create_branch_policy   = true
   upload_tf_files        = true
   tf_file_path           = "tf-files/"
 }

@@ -1,6 +1,6 @@
 module "azuredevops-bootstrap" {
   source  = "bayupw/azurerm-tf-bootstrap/azuredevops"
-  version = "1.0.0"
+  version = "1.0.1"
 
   azuredevops_organisation = "<your-org-name>"
   azuredevops_token        = "<ADO personal token>"
@@ -28,6 +28,7 @@ module "azuredevops-bootstrap" {
 
   create_variables_group = true
   create_pipeline        = true
+  create_branch_policy   = true
   upload_tf_files        = true
   tf_file_path           = "tf-files/"
 }

@@ -1,0 +1,118 @@
+trigger:
+  branches:
+    include:
+    - '*'
+    exclude:
+    - main
+pr:
+  branches:
+    include:
+    - '*'
+
+variables:
+- group: shared
+
+pool:
+  vmImage: ubuntu-latest
+
+stages:
+- stage: validate
+  displayName: Validate
+  jobs:
+    - job:
+      displayName: Validate Terraform
+      pool:
+        vmImage: ubuntu-latest
+      steps:
+      # Terraform format check
+      - script: terraform fmt -check
+        displayName: Terraform Format Check
+        workingDirectory: '$(System.DefaultWorkingDirectory)'
+      # Terraform init with backend set to false
+      - script: terraform init -backend=false
+        displayName: Terraform Init
+        workingDirectory: '$(System.DefaultWorkingDirectory)'
+      - script: terraform validate
+        displayName: Terraform Validate
+        workingDirectory: '$(System.DefaultWorkingDirectory)'
+
+      # Checkov is a static code analysis tool for infrastructure-as-code.
+      # It scans cloud infrastructure provisioned using Terraform, Cloudformation, Kubernetes, Serverless 
+      # or ARM Templates and detects security and compliance misconfigurations.
+      # Documentation: https://github.com/bridgecrewio/checkov
+      - script: |
+          mkdir CheckovReport
+          docker pull bridgecrew/checkov:latest
+
+          docker run \
+            --volume $(System.DefaultWorkingDirectory):/tf \
+            bridgecrew/checkov \
+              --directory /tf \
+              --output junitxml > $(System.DefaultWorkingDirectory)/CheckovReport/Checkov-Report.xml
+
+          docker run \
+          --volume $(System.DefaultWorkingDirectory):/tf \
+          bridgecrew/checkov \
+            --directory /tf
+        displayName: 'Checkov Static Code Analysis'
+        name: CheckovScan
+        condition: always()
+      
+      # Publish the Checkov report as an artifact to Azure Pipelines
+      # - task: PublishBuildArtifacts@1
+      #   displayName: 'Publish Artifact: Checkov Report'
+      #   condition: succeededOrFailed()
+      #   inputs:
+      #     PathtoPublish: '$(System.DefaultWorkingDirectory)/CheckovReport'
+      #     ArtifactName: CheckovReport
+
+      # Publish the results of the Checkov analysis as Test Results to the pipeline
+      - task: PublishTestResults@2
+        displayName: Publish Checkov Test Results
+        condition: succeededOrFailed()
+        inputs:
+          testResultsFormat: 'JUnit' # Options JUnit, NUnit, VSTest, xUnit, cTest
+          testResultsFiles: '**/Checkov-Report.xml'
+          searchFolder: '$(System.DefaultWorkingDirectory)/CheckovReport'
+          mergeTestResults: false
+          testRunTitle: Checkov Scan
+          failTaskOnFailedTests: true
+          publishRunAttachments: true
+
+      # Clean up any of the containers / images that were used for quality checks
+      - bash: |
+          docker rmi "bridgecrew/checkov" -f | true
+        displayName: 'Remove Terraform Quality Check Docker Images'
+        condition: always()
+
+- stage: plan
+  displayName: Plan
+  dependsOn: validate
+  jobs:
+    - job: plan
+      displayName: Terraform Plan
+      pool:
+        vmImage: ubuntu-latest
+      steps:
+      # Terraform init with backend set to to use Azure Blob storage
+      - checkout: self
+        displayName: Checkout Terraform Module
+      - task: TerraformTaskV4@4
+        displayName: Terraform Init
+        inputs:
+          provider: 'azurerm'
+          command: 'init'
+          workingDirectory: '$(System.DefaultWorkingDirectory)'
+          backendServiceArm: '$(SERVICE_CONNECTION)'
+          backendAzureRmResourceGroupName: '$(BACKEND_RESOURCE_GROUP)'
+          backendAzureRmStorageAccountName: '$(BACKEND_STORAGE_ACCOUNT)'
+          backendAzureRmContainerName: '$(BACKEND_STORAGE_CONTAINER)'
+          backendAzureRmKey: '$(BACKEND_KEY)'
+
+      # Plan Terraform changes
+      - task: TerraformTaskV4@4
+        displayName: Terraform Plan
+        inputs:
+          provider: 'azurerm'
+          command: 'plan'
+          environmentServiceNameAzureRM: '$(SERVICE_CONNECTION)'
